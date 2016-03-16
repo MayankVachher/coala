@@ -188,3 +188,65 @@ yield them and write the method as a generator.
     about how bears will look in the future, please read up on
     https://github.com/coala-analyzer/coala/issues/725 or ask us on
     https://gitter.im/coala-analyzer/coala.
+
+Bears With Other Bears as Dependencies
+--------------------------------------
+
+So we've got a result, but what if we need our Bear to depend on results from
+a different Bear?
+
+Well coala has an efficient dependency management system
+that would run the other Bear before your Bear and get its results for you.
+All you need to do is to tell coala which Bear/s you want to run before your
+Bear.
+
+So lets see how we tell coala which Bears to run before yours
+
+.. code:: python
+
+    from coalib.bears.LocalBear import LocalBear
+    from bears.somePathTo.OtherBear import OtherBear
+
+    class DependancyBear(LocalBear):
+
+        def run(self, filename, file, dependency_results: dict):
+            results = dependency_results[OtherBear.__name__]
+
+        @staticmethod
+        def get_dependencies():
+            return [OtherBear]
+
+As we can see we have a ``get_dependencies`` method which returns the
+``OtherBear`` which we want to run before our ``DependencyBear``.
+coala searches for the ``get_dependencies`` function before executing
+the ``DeopendancyBear`` and runs all the Bears which are returned by it.
+
+After running these bears coala gives all the results returned by the Bears
+in the ``dependency_results``  dictionary, which has the Bear's name as a key
+and a list of results as the value, like in this case, we would have
+``dependency_results = {'OtherBear' : [results which OtherBear returns]}``.
+
+Hidden Results
+--------------
+Apart from regular Results coala provides HiddenResults, which are used
+to share data between Bears. This feautre is specifically
+for Bears that act as dependencies on other Bears, and do not
+want to return Results which would be displayed when the bear is run.
+
+Lets see how we can use HiddenResults in our Bear
+
+.. code:: python
+
+    from coalib.bears.LocalBear import LocalBear
+    from coalib.results.HiddenResult import HiddenResult
+
+    class OtherBear(LocalBear):
+
+        def run(self, filename, file):
+            yield HiddenResult(self, ["Some Content", "Some Other Content"])
+
+Here we see that this Bear unlike normal Bears yields a ``HiddenResult`` instead
+of ``Result``. The first parameter in ``HiddenResult`` should be the instance
+of the Bear that yields this result (in this case self), and second argument
+should be the content we want to transfer between the Bears. Here we use a list
+of strings as content but it can be any object.
